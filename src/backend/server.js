@@ -7,20 +7,22 @@ const { SessionStore } = require('./sessions.js');
 const { Stats } = require('./stats.js');
 const { createWatcher } = require('./watcher.js');
 const { createTokenMiddleware, verifyWsToken } = require('./auth.js');
+const { sendInput } = require('./tmux.js');
 
 const SESSIONS_DIR = path.join(process.env.HOME || require('os').homedir(), '.ccm', 'sessions');
 
-function createServer({ port = 3000, token = null } = {}) {
+function createServer({ token = null } = {}) {
   const app = express();
   const sessionStore = new SessionStore();
   const stats = new Stats();
 
   // Auth middleware (no-op in Tailscale mode)
   app.use(createTokenMiddleware(token));
+  // Parse JSON bodies before routes
+  app.use(express.json());
 
   // Serve PWA
   app.use(express.static(path.join(__dirname, '../../public')));
-  app.use(express.json());
 
   // REST: list sessions
   app.get('/api/sessions', (req, res) => res.json(sessionStore.getAll()));
@@ -33,7 +35,6 @@ function createServer({ port = 3000, token = null } = {}) {
     if (!session || session.managed === false) {
       return res.status(403).json({ error: 'Session is view-only' });
     }
-    const { sendInput } = require('./tmux.js');
     try {
       sendInput({ windowName: session.windowName, text });
       stats.recordInputSent();
@@ -82,9 +83,9 @@ function createServer({ port = 3000, token = null } = {}) {
     }
   });
 
-  // Flush stats on shutdown
-  process.on('SIGTERM', () => { stats.flush(); server.close(); });
-  process.on('SIGINT', () => { stats.flush(); server.close(); });
+  // Flush stats on shutdown (use once to avoid stacking handlers on repeated createServer calls)
+  process.once('SIGTERM', () => { stats.flush(); server.close(); });
+  process.once('SIGINT', () => { stats.flush(); server.close(); });
 
   return { server, sessionStore, stats };
 }
