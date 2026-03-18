@@ -31,7 +31,6 @@ function newWindow({ windowName, cwd, label = '', sessionName = CCM_SESSION }) {
     '-e', `CCM_WINDOW_NAME=${windowName}`,
     '-e', `CCM_LABEL=${label}`,
   ]);
-  execFileSync('tmux', ['send-keys', '-t', `${sessionName}:${windowName}`, 'claude', 'Enter']);
 }
 
 function sendInput({ windowName, text, sessionName = CCM_SESSION }) {

@@ -70,10 +70,10 @@ Copy the printed URL and open it on your phone. Bookmark it — it stays the sam
 ## Daily Workflow
 
 ```bash
-ccm new "label" /path/to/project   # start a new Claude Code session
+ccm new "label" /path/to/project   # open a new terminal tab
 ```
 
-That's it. The new tab appears on your phone within a second. From there you can read output, send input, and close tabs — all from your phone while your Mac keeps running.
+The new tab appears on your phone within a second. From there you can read output, type commands, and close tabs — all from your phone while your Mac keeps running.
 
 To stop the server:
 ```bash
@@ -128,8 +128,8 @@ ccm start                   # start server in background (port 3000)
 ccm start --port 3001       # custom port
 ccm stop                    # stop server and deregister hooks
 
-ccm new "label"             # new Claude session in current directory
-ccm new "label" /path       # new Claude session in specific directory (created if needed)
+ccm new "label"             # new terminal tab in current directory
+ccm new "label" /path       # new terminal tab in specific directory (created if needed)
 
 ccm list                    # list known sessions
 
