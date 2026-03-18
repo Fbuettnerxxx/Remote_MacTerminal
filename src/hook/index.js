@@ -2,11 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DEFAULT_SESSIONS_DIR = path.join(process.env.HOME, '.ccm', 'sessions');
-const ERROR_LOG = path.join(process.env.HOME, '.ccm', 'hook-errors.log');
+const HOME = process.env.HOME || require('os').homedir();
+const DEFAULT_SESSIONS_DIR = path.join(HOME, '.ccm', 'sessions');
+const ERROR_LOG = path.join(HOME, '.ccm', 'hook-errors.log');
 
 function deriveSyntheticId() {
-  const base = `${process.env.CLAUDE_PROJECT_ID || 'unknown'}-${process.ppid || process.pid}`;
+  // process.ppid requires Node 9.2+ — safe on this project's minimum of Node 18
+  const base = `${process.env.CLAUDE_PROJECT_ID || 'unknown'}-${process.ppid}`;
   return crypto.createHash('sha1').update(base).digest('hex').slice(0, 12);
 }
 
@@ -28,6 +30,8 @@ function writeEvent({ sessionId, event, toolName, sessionsDir = DEFAULT_SESSIONS
     state,
     cwd: process.env.PWD || process.cwd(),
     updatedAt: new Date().toISOString(),
+    // Clear lastToolName on stop so dashboard doesn't show stale tool name while waiting
+    ...(event === 'stop' ? { lastToolName: null } : {}),
     ...(toolName ? { lastToolName: toolName } : {}),
   };
 
