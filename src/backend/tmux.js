@@ -1,7 +1,8 @@
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 const CCM_SESSION = 'ccm';
 
+// These build functions are used in unit tests to verify argument construction.
 function buildNewWindowCmd({ sessionName = CCM_SESSION, windowName, cwd }) {
   return `tmux new-window -t ${sessionName} -n "${windowName}" -c "${cwd}"`;
 }
@@ -23,15 +24,16 @@ function ensureSession(sessionName = CCM_SESSION) {
   }
 }
 
-function newWindow({ windowName, cwd }) {
-  ensureSession();
-  execSync(buildNewWindowCmd({ windowName, cwd }));
-  // Start claude in the new window
-  execSync(buildSendKeysCmd({ windowName, text: 'claude' }));
+function newWindow({ windowName, cwd, sessionName = CCM_SESSION }) {
+  ensureSession(sessionName);
+  // Use execFileSync to avoid shell interpretation of cwd and windowName
+  execFileSync('tmux', ['new-window', '-t', sessionName, '-n', windowName, '-c', cwd]);
+  execFileSync('tmux', ['send-keys', '-t', `${sessionName}:${windowName}`, 'claude', 'Enter']);
 }
 
-function sendInput({ windowName, text }) {
-  execSync(buildSendKeysCmd({ windowName, text }));
+function sendInput({ windowName, text, sessionName = CCM_SESSION }) {
+  // Use execFileSync to avoid shell interpretation of user-provided text
+  execFileSync('tmux', ['send-keys', '-t', `${sessionName}:${windowName}`, text, 'Enter']);
 }
 
 function listWindows() {

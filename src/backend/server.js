@@ -52,6 +52,9 @@ function createServer({ token = null } = {}) {
   // Send input to a managed session
   app.post('/api/sessions/:id/input', (req, res) => {
     const { text } = req.body;
+    if (typeof text !== 'string' || text.length === 0 || text.length > 10000) {
+      return res.status(400).json({ error: 'text must be a non-empty string ≤ 10000 chars' });
+    }
     const session = sessionStore.get(req.params.id);
     if (!session || session.managed === false) {
       return res.status(403).json({ error: 'Session is view-only' });

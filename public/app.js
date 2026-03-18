@@ -81,29 +81,33 @@ function renderSessions() {
 
 function renderCard(s) {
   const emoji = EMOJIS[Math.abs(hashCode(s.sessionId)) % EMOJIS.length];
-  const label = s.label || s.cwd?.split('/').pop() || s.sessionId.slice(0, 8);
+  const label = escapeHtml(s.label || s.cwd?.split('/').pop() || s.sessionId.slice(0, 8));
+  const cwdDisplay = escapeHtml(s.cwd || '');
   const isManaged = s.managed !== false;
+  const safeId = escapeHtml(s.sessionId);
+  const safeState = escapeHtml(s.state);
 
   const badgeDot = ['working', 'bootstrapping'].includes(s.state) ? '<div class="dot pulse"></div>' : '<div class="dot"></div>';
-  const activityText = s.lastToolName ? `doing: ${s.lastToolName}` : s.state === 'waiting' ? 'ready for input' : s.state;
+  const activityRaw = s.lastToolName ? `doing: ${s.lastToolName}` : s.state === 'waiting' ? 'ready for input' : s.state;
+  const activityText = escapeHtml(activityRaw);
 
   let footer = '';
   if (s.state === 'waiting' && isManaged) {
-    footer = `<div class="input-row"><input id="input-${s.sessionId}" class="quick-input" placeholder="Reply to Claude…"><button id="send-${s.sessionId}" class="send-btn">↑</button></div>`;
+    footer = `<div class="input-row"><input id="input-${safeId}" class="quick-input" placeholder="Reply to Claude…"><button id="send-${safeId}" class="send-btn">↑</button></div>`;
   } else if (!isManaged) {
-    footer = `<div class="viewonly-row"><span class="viewonly-label">Existing session · view only</span><button class="adopt-btn" onclick="adoptSession('${s.sessionId}')">Adopt →</button></div>`;
+    footer = `<div class="viewonly-row"><span class="viewonly-label">Existing session · view only</span><button class="adopt-btn" onclick="adoptSession('${safeId}')">Adopt →</button></div>`;
   }
 
-  const toolChips = s.toolHistory?.slice(-3).map(t => `<span class="tool-chip">${t}</span>`).join('') || '';
+  const toolChips = s.toolHistory?.slice(-3).map(t => `<span class="tool-chip">${escapeHtml(t)}</span>`).join('') || '';
 
   return `
-    <div class="card ${s.state}">
+    <div class="card ${safeState}">
       <div class="card-top">
         <div class="card-label">
           <div class="emoji-badge">${emoji}</div>
-          <div><div class="session-name">${label}</div><div class="session-path">${s.cwd || ''}</div></div>
+          <div><div class="session-name">${label}</div><div class="session-path">${cwdDisplay}</div></div>
         </div>
-        <div class="status-badge ${s.state}">${badgeDot} ${s.state}</div>
+        <div class="status-badge ${safeState}">${badgeDot} ${safeState}</div>
       </div>
       ${toolChips ? `<div class="tool-chips">${toolChips}</div>` : ''}
       <div class="card-activity"><span class="activity-text">${activityText}</span></div>
@@ -132,6 +136,15 @@ function hashCode(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
   return h;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 connect();
