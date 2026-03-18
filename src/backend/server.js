@@ -11,10 +11,31 @@ const { sendInput } = require('./tmux.js');
 
 const SESSIONS_DIR = path.join(process.env.HOME || require('os').homedir(), '.ccm', 'sessions');
 
+function pruneOldSessionFiles(sessionsDir) {
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  let pruned = 0;
+  try {
+    const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.json'));
+    const now = Date.now();
+    for (const file of files) {
+      const filePath = path.join(sessionsDir, file);
+      try {
+        const { mtimeMs } = fs.statSync(filePath);
+        if (now - mtimeMs > THIRTY_DAYS_MS) {
+          fs.unlinkSync(filePath);
+          pruned++;
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return pruned;
+}
+
 function createServer({ token = null } = {}) {
   const app = express();
   const sessionStore = new SessionStore();
   const stats = new Stats();
+  pruneOldSessionFiles(SESSIONS_DIR);
 
   // Auth middleware (no-op in Tailscale mode)
   app.use(createTokenMiddleware(token));
@@ -90,4 +111,4 @@ function createServer({ token = null } = {}) {
   return { server, sessionStore, stats };
 }
 
-module.exports = { createServer };
+module.exports = { createServer, pruneOldSessionFiles };
