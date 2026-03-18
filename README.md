@@ -1,6 +1,6 @@
-# ccm — Claude Code Manager
+# Remmote Terminal Manager
 
-Your Mac terminal on your phone. All your Claude Code sessions, live, from anywhere via Tailscale.
+Your Mac terminal on your phone. All your Claude Code sessions, live, from anywhere via Tailscale. Also start new sessions, make new projects or terminate unwanted ones.
 
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
