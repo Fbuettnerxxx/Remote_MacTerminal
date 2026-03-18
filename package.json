@@ -1,8 +1,16 @@
 {
   "name": "ccm",
   "version": "0.1.0",
-  "description": "Monitor and control Claude Code sessions from your phone",
+  "description": "Manage all your Claude Code sessions from your phone",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fbuettnerxxx/claudecode_terminal_manager.git"
+  },
+  "keywords": ["claude", "claude-code", "terminal", "tmux", "dashboard", "pwa"],
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "ccm": "./bin/ccm",
     "ccm-hook": "./bin/ccm-hook"
