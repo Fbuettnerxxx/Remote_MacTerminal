@@ -1,6 +1,6 @@
 # ccm — Claude Code Manager
 
-Your Mac terminal on your phone. See all your Claude Code sessions live, send input, start new ones — from anywhere.
+Your Mac terminal on your phone. All your Claude Code sessions, live, from anywhere via Tailscale.
 
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
@@ -9,19 +9,28 @@ Your Mac terminal on your phone. See all your Claude Code sessions live, send in
 
 ## What it does
 
-CCM runs a small server on your Mac that streams your terminal sessions to a clean mobile dashboard. Every session runs inside a tmux window — you see the actual terminal output in real time and can type and send input from your phone exactly as if you were at your keyboard.
+CCM runs a small server on your Mac that streams your Claude Code terminal sessions to a mobile dashboard. Every session runs inside a tmux window — you see the actual terminal output live and can type and send input from your phone exactly as if you were at your keyboard.
 
-- **Live terminal content** — actual output, not just status indicators
+- **Live terminal content** — see exactly what's on screen, updated every 300ms
 - **Tab per session** — switch between Claude Code sessions like browser tabs
 - **Send input from your phone** — type a reply, hit send, Claude responds
-- **Start new sessions remotely** — specify a label and project path, done
-- **Access from anywhere** — Tailscale (private) or Cloudflare Tunnel (public HTTPS)
+- **Start new sessions remotely** — give it a label and a project path, done
+- **Close sessions** — tap × on a tab to kill it
+- **Access from anywhere** — private and secure via Tailscale
 
 ---
 
-## Quick Start
+## Requirements
 
-### 1. Install
+| Requirement | Install |
+|-------------|---------|
+| Node.js 18+ | [nodejs.org](https://nodejs.org) |
+| tmux | `brew install tmux` |
+| Tailscale | [tailscale.com/download](https://tailscale.com/download) — install on both Mac and phone |
+
+---
+
+## Installation
 
 ```bash
 git clone https://github.com/Fbuettnerxxx/claudecode_terminal_manager.git
@@ -30,7 +39,15 @@ npm install
 npm link
 ```
 
-`npm link` makes `ccm` and `ccm-hook` available as global commands.
+`npm link` makes `ccm` available as a global command. Find the installed path with `which ccm` if needed.
+
+---
+
+## Setup (one time)
+
+### 1. Install Tailscale on your Mac and phone
+
+Download from [tailscale.com/download](https://tailscale.com/download) and sign in with the same account on both devices.
 
 ### 2. Start the server
 
@@ -38,131 +55,42 @@ npm link
 ccm start
 ```
 
-### 3. Open on your phone
+Returns immediately — the server runs in the background. Logs go to `~/.ccm/server.log`.
 
-On the same network: `http://<your-mac-ip>:3000`
-With Tailscale: `ccm tunnel tailscale` prints the exact URL.
-
-### 4. Start a Claude Code session
+### 3. Get your phone URL
 
 ```bash
-ccm new "my feature" /path/to/project
+ccm tunnel
 ```
 
-The session appears as a new tab on your phone within a second. You see the terminal output live and can send input from the input bar at the bottom.
+Copy the printed URL and open it on your phone. Bookmark it — it stays the same as long as your Tailscale hostname doesn't change.
 
 ---
 
-## Requirements
-
-| Requirement | Why | Install |
-|-------------|-----|---------|
-| Node.js 18+ | runs the server | [nodejs.org](https://nodejs.org) |
-| tmux | all sessions run inside tmux | `brew install tmux` |
-| Tailscale *(optional)* | private remote access | [tailscale.com/download](https://tailscale.com/download) |
-| cloudflared *(optional)* | public HTTPS URL | `brew install cloudflared` |
-
----
-
-## All Commands
+## Daily Workflow
 
 ```bash
-ccm start                          # start server on port 3000
-ccm start --port 3001              # custom port
-ccm stop                           # stop server
-
-ccm new "label"                    # new session in current directory
-ccm new "label" /path/to/dir       # new session in specific directory
-
-ccm list                           # list known sessions
-
-ccm tunnel tailscale               # print Tailscale URL
-ccm tunnel cloudflare              # start Cloudflare Tunnel, print public URL + token
+ccm new "label" /path/to/project   # start a new Claude Code session
 ```
 
----
+That's it. The new tab appears on your phone within a second. From there you can read output, send input, and close tabs — all from your phone while your Mac keeps running.
 
-## The Phone UI
-
-```
-┌─────────────────────────────────┐
-│ ● │ auth-fix │ api-agent │ ＋   │  ← tab bar (swipe to switch)
-├─────────────────────────────────┤
-│                                 │
-│  > claude                       │
-│  ╭─────────────────────────── ╮ │
-│  │ ● Working on your request  │ │  ← live terminal output
-│  │   Writing src/auth.js...   │ │     updates every 300ms
-│  ╰────────────────────────────╯ │
-│                                 │
-├─────────────────────────────────┤
-│  Send input…             [  ↑ ] │  ← tap to type, Enter to send
-└─────────────────────────────────┘
-```
-
-Tap **＋** to create a new session. The new tab appears automatically once Claude starts.
-
----
-
-## Remote Access
-
-### Tailscale (recommended)
-
-1. Install Tailscale on Mac and phone — [tailscale.com/download](https://tailscale.com/download)
-2. Sign in on both devices (same account)
-3. `ccm start`, then `ccm tunnel tailscale` — opens your browser to the right URL
-4. Copy that URL and open on your phone
-
-No token needed. Tailscale handles auth at the network level.
-
-### Cloudflare Tunnel (public HTTPS)
-
-1. `brew install cloudflared`
-2. `ccm start`
-3. `ccm tunnel cloudflare` — prints a public `https://*.trycloudflare.com` URL with a token
-4. Open `https://<url>?token=<token>` on your phone
-
-The token is saved to `~/.ccm/config.json`. The URL changes each time you restart the tunnel; for a permanent URL, set up a named Cloudflare Tunnel with a custom domain.
-
----
-
-## How It Works
-
-### Sessions = tmux windows
-
-All Claude Code sessions run as windows inside a single tmux session named `ccm`. When you run `ccm new`, it opens a new tmux window, sets environment variables for session tracking, and starts Claude.
-
-### Real-time streaming
-
-The server polls tmux every 300ms using `tmux capture-pane`, capturing the last 200 lines of each watched window. When content changes, it pushes the update to connected clients over WebSocket. ANSI escape codes are stripped server-side so the output renders cleanly.
-
-### Input
-
-The phone sends `{ type: "input", window: "name", text: "..." }` over WebSocket. The server calls `tmux send-keys` to inject the text into the target window — exactly as if you typed it in the terminal.
-
-### Session tracking
-
-Claude Code hooks (`PreToolUse`, `PostToolUse`, `Stop`) are registered in `~/.claude/settings.json` and run `ccm-hook` on every action, writing state to `~/.ccm/sessions/`. This powers background stats tracking. The hooks always exit 0 and never block Claude Code.
-
-### Files on disk
-
-```
-~/.ccm/
-  sessions/              session state files (one JSON per Claude session)
-  stats-YYYY-MM-DD.json  daily stats (tools run, inputs sent)
-  config.json            server config (port, auth token)
-  server.pid             running server PID
-  hook-errors.log        hook errors (written only if something goes wrong)
+To stop the server:
+```bash
+ccm stop
 ```
 
 ---
 
 ## Auto-Start on Login
 
-To have ccm always running in the background so your phone dashboard is always ready:
+To have ccm always running so your phone dashboard is always ready:
 
 ```bash
-# Create a launchd agent (runs ccm start automatically at login)
+# Find your ccm path first
+which ccm   # e.g. /usr/local/bin/ccm
+
+# Create the launchd agent (replace the path if different)
 cat > ~/Library/LaunchAgents/com.ccm.server.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -186,59 +114,97 @@ EOF
 launchctl load ~/Library/LaunchAgents/com.ccm.server.plist
 ```
 
-To stop auto-start:
+To disable auto-start:
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.ccm.server.plist
 ```
 
-> **Note:** If `ccm` is installed somewhere other than `/usr/local/bin/ccm`, find the path with `which ccm` and update the plist accordingly.
+---
 
-Once set up, the intended daily workflow is:
-1. `ccm new "label" /path/to/project` to start any new Claude session (instead of a normal terminal tab)
-2. Open the CCM dashboard on your phone — all sessions are there, always live
-3. Switch between sessions, read output, send input — all from your phone
+## All Commands
+
+```bash
+ccm start                   # start server in background (port 3000)
+ccm start --port 3001       # custom port
+ccm stop                    # stop server and deregister hooks
+
+ccm new "label"             # new Claude session in current directory
+ccm new "label" /path       # new Claude session in specific directory (created if needed)
+
+ccm list                    # list known sessions
+
+ccm tunnel                  # print your Tailscale URL for phone access
+```
+
+---
+
+## The Phone UI
+
+```
+┌─────────────────────────────────┐
+│ ● │ auth-fix │ api-agent │ ＋   │  ← tap a tab to switch, × to close
+├─────────────────────────────────┤
+│                                 │
+│  > Writing src/auth.js...       │
+│  > Running tests...             │  ← live terminal output
+│  > All tests passed             │
+│                                 │
+├─────────────────────────────────┤
+│  Send input…             [  ↑ ] │  ← type here, Enter or ↑ to send
+└─────────────────────────────────┘
+```
+
+---
+
+## How It Works
+
+### Sessions = tmux windows
+
+All Claude Code sessions run as windows inside a tmux session named `ccm`. `ccm new` opens a new window, sets environment variables for session tracking, and starts Claude.
+
+### Streaming
+
+The server polls `tmux capture-pane` every 300ms. When content changes it pushes the update over WebSocket. Input from the phone goes back via `tmux send-keys`.
+
+### Hooks
+
+Claude Code hooks (`PreToolUse`, `PostToolUse`, `Stop`) are registered globally in `~/.claude/settings.json` and run `ccm-hook` on every action for background stats tracking. The hooks always exit 0 and never block Claude Code.
+
+### Network security
+
+Tailscale handles all authentication — only devices on your Tailscale network can reach the server. No tokens or passwords needed.
 
 ---
 
 ## About Existing Sessions
 
-Sessions started in **Terminal.app before `ccm start`** cannot be streamed — they're not inside the `ccm` tmux session.
-
-**Workaround:** start a fresh session with `ccm new`. Claude automatically picks up project context from `CLAUDE.md` and conversation history, so continuity is rarely a problem in practice.
+Sessions started in Terminal.app before `ccm start` are not inside the `ccm` tmux session and cannot be streamed. Start a fresh session with `ccm new` — Claude picks up project context automatically from conversation history and `CLAUDE.md`.
 
 ---
 
 ## Troubleshooting
 
-**No tabs showing on the dashboard**
-- Make sure the server is running: `ccm start`
-- Sessions only appear if they were started with `ccm new` (or manually inside the `ccm` tmux session)
+**No tabs on the dashboard**
+Start sessions with `ccm new` — only sessions inside the `ccm` tmux session are visible.
 
 **`ccm` command not found**
-- Run `npm link` inside the project directory
-- Or run directly: `node bin/ccm`
+Run `npm link` inside the project directory, or use `node bin/ccm` directly.
 
 **`ccm new` fails**
-- tmux must be installed: `brew install tmux`
-- ccm creates its own tmux session named `ccm` — you don't need to be in tmux already
-
-**Output looks garbled**
-- ANSI codes are stripped automatically; if you still see garbage, file an issue
+tmux must be installed: `brew install tmux`
 
 **Phone can't reach the dashboard**
-- Same WiFi: use `ipconfig getifaddr en0` to find your Mac's IP
-- For reliable access outside the house, use Tailscale
+Make sure Tailscale is running and connected on both devices, then run `ccm tunnel` to get the current URL.
 
-**Cloudflare URL not printing**
-- Check `cloudflared` is installed: `brew install cloudflared`
-- URL appears after ~5 seconds; check your internet connection if it hangs
+**Server not starting**
+Check logs: `cat ~/.ccm/server.log`
 
 ---
 
 ## Development
 
 ```bash
-npm test            # run all tests (33 tests, 7 suites)
+npm test            # run all tests
 npm test -- --watch # watch mode
 ```
 

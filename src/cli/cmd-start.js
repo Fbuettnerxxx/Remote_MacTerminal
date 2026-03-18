@@ -3,7 +3,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const { createServer } = require('../backend/server.js');
 const { registerHooks } = require('../hooks-config/index.js');
-const { readConfig, readClaudeSettings, writeClaudeSettings, ensureToken, PID_FILE } = require('../config.js');
+const { readConfig, readClaudeSettings, writeClaudeSettings, PID_FILE } = require('../config.js');
 const { isTmuxAvailable } = require('../backend/tmux.js');
 
 module.exports = (program) => {
@@ -45,14 +45,12 @@ module.exports = (program) => {
       // Foreground mode (used by the daemon process)
       const cfg = readConfig();
       const port = parseInt(opts.port) || cfg.port || 3000;
-      const tunnelMode = cfg.tunnel || 'tailscale';
-      const token = ensureToken(tunnelMode);
 
       const hookBin = path.resolve(__dirname, '../../bin/ccm-hook');
       const settings = readClaudeSettings();
       writeClaudeSettings(registerHooks(settings, hookBin));
 
-      const { server } = createServer({ token });
+      const { server } = createServer();
       server.listen(port, '0.0.0.0', () => {
         fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
         fs.writeFileSync(PID_FILE, String(process.pid));
