@@ -1,13 +1,14 @@
 const express = require('express');
 const http = require('http');
 const fs = require('fs');
+const crypto = require('crypto');
 const WebSocket = require('ws');
 const path = require('path');
 const { SessionStore } = require('./sessions.js');
 const { Stats } = require('./stats.js');
 const { createWatcher } = require('./watcher.js');
 const { createTokenMiddleware, verifyWsToken } = require('./auth.js');
-const { sendInput } = require('./tmux.js');
+const { sendInput, newWindow } = require('./tmux.js');
 
 const SESSIONS_DIR = path.join(process.env.HOME || require('os').homedir(), '.ccm', 'sessions');
 
@@ -48,6 +49,36 @@ function createServer({ token = null } = {}) {
   // REST: list sessions
   app.get('/api/sessions', (req, res) => res.json(sessionStore.getAll()));
   app.get('/api/stats', (req, res) => res.json(stats.today()));
+
+  // Start a new managed session from the dashboard
+  app.post('/api/sessions/new', (req, res) => {
+    const { label, cwd } = req.body;
+    if (!label || typeof label !== 'string' || label.length > 100) {
+      return res.status(400).json({ error: 'label required (max 100 chars)' });
+    }
+    if (!cwd || typeof cwd !== 'string') {
+      return res.status(400).json({ error: 'cwd required' });
+    }
+    try {
+      if (!fs.statSync(cwd).isDirectory()) return res.status(400).json({ error: 'cwd must be a directory' });
+    } catch (_) {
+      return res.status(400).json({ error: 'directory does not exist: ' + cwd });
+    }
+    const sessionId = crypto.randomBytes(6).toString('hex');
+    const windowName = label.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+    const now = new Date().toISOString();
+    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(SESSIONS_DIR, `${sessionId}.json`), JSON.stringify(
+      { sessionId, label, cwd, state: 'bootstrapping', managed: true, windowName, createdAt: now, updatedAt: now },
+      null, 2
+    ));
+    try {
+      newWindow({ windowName, cwd });
+      res.json({ ok: true, sessionId });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // Send input to a managed session
   app.post('/api/sessions/:id/input', (req, res) => {

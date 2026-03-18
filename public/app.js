@@ -116,7 +116,56 @@ function renderCard(s) {
 }
 
 function renderNewBtn() {
-  return `<button class="new-session-btn" onclick="alert('Use: ccm new \\'label\\' /path/to/project')">＋ New session</button>`;
+  return `<button class="new-session-btn" onclick="showNewSessionModal()">＋ New session</button>`;
+}
+
+function showNewSessionModal() {
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  document.getElementById('modal-label').focus();
+  document.getElementById('modal-error').classList.add('hidden');
+  document.getElementById('modal-error').textContent = '';
+}
+
+function hideNewSessionModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  document.getElementById('modal-label').value = '';
+  document.getElementById('modal-cwd').value = '';
+  document.getElementById('modal-error').classList.add('hidden');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) hideNewSessionModal();
+}
+
+async function submitNewSession() {
+  const label = document.getElementById('modal-label').value.trim();
+  const cwd = document.getElementById('modal-cwd').value.trim();
+  const errEl = document.getElementById('modal-error');
+  const btn = document.getElementById('modal-submit');
+
+  errEl.classList.add('hidden');
+  if (!label) { errEl.textContent = 'Label is required'; errEl.classList.remove('hidden'); return; }
+  if (!cwd) { errEl.textContent = 'Working directory is required'; errEl.classList.remove('hidden'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+  const token = getToken();
+  const url = `/api/sessions/new${token ? '?token=' + token : ''}`;
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, cwd }) });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to start session';
+      errEl.classList.remove('hidden');
+    } else {
+      hideNewSessionModal();
+    }
+  } catch (e) {
+    errEl.textContent = 'Network error';
+    errEl.classList.remove('hidden');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Start Session →';
 }
 
 async function sendInput(sessionId, text) {

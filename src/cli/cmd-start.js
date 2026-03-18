@@ -31,6 +31,8 @@ module.exports = (program) => {
         fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
         fs.writeFileSync(PID_FILE, String(process.pid));
         console.log(`✓ ccm server running on port ${port}`);
+        console.log(`\n  ⚠️  Claude Code sessions already running won't appear until restarted.`);
+        console.log(`  New sessions started after this point are tracked automatically.\n`);
         if (token) {
           console.log(`\n  Cloudflare mode — access token generated.`);
           console.log(`  Local URL: http://localhost:${port}?token=${token}`);
