@@ -38,7 +38,7 @@
 │  ┌──────────┐   hooks    ┌───────────────────────┐  │
 │  │  Claude   │ ─────────▶│  ~/.ccm/sessions/*.json│  │
 │  │ sessions  │           └──────────┬────────────┘  │
-│  │ (tmux or  │                      │ fs.watch       │
+│  │ (tmux or  │                      │ chokidar       │
 │  │ Terminal) │           ┌──────────▼────────────┐  │
 │  └──────────┘           │   ccm backend          │  │
 │                          │   Node.js + Express    │  │
@@ -117,7 +117,9 @@ On `ccm start`, the tool merges into `~/.claude/settings.json` (non-destructivel
 }
 ```
 
-**`$CLAUDE_SESSION_ID`** is an environment variable injected by Claude Code itself into every hook invocation. It is a stable string identifier for the running session (persists across tool calls within a session, changes when a new `claude` process starts). `ccm-hook` uses it as the filename key: `~/.ccm/sessions/<id>.json`.
+**`$CLAUDE_SESSION_ID`** is an environment variable injected by Claude Code into every hook invocation (documented in the Claude Code hooks reference). It is a stable string identifier for the running session (persists across tool calls within a session, changes when a new `claude` process starts). `ccm-hook` uses it as the filename key: `~/.ccm/sessions/<id>.json`.
+
+**Fallback if `$CLAUDE_SESSION_ID` is unavailable:** On first hook invocation, `ccm-hook` checks whether the variable is set. If not, it derives a synthetic ID by combining `$CLAUDE_PROJECT_ID` (if available) with the Claude process PID (`$PPID`), hashed to a short string. This synthetic ID is stable within a single Claude process lifetime. A warning is logged to `~/.ccm/hook-errors.log` so the user knows to check their Claude Code version.
 
 **Hook lifecycle:**
 - `ccm start` registers hooks (merges, does not duplicate if already present)
