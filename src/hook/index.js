@@ -24,12 +24,19 @@ function writeEvent({ sessionId, event, toolName, sessionsDir = DEFAULT_SESSIONS
   const stateMap = { 'pre-tool': 'working', 'post-tool': 'working', 'stop': 'waiting' };
   const state = stateMap[event] || 'unknown';
 
+  // When Claude was started by ccm new/API, these env vars mark the session as managed
+  const ccmWindowName = process.env.CCM_WINDOW_NAME;
+  const ccmLabel = process.env.CCM_LABEL;
+
   const updated = {
     ...existing,
     sessionId: id,
     state,
     cwd: process.env.PWD || process.cwd(),
     updatedAt: new Date().toISOString(),
+    // Inherit managed session info from tmux window env vars (set by ccm new / API)
+    ...(ccmWindowName ? { managed: true, windowName: ccmWindowName } : {}),
+    ...(ccmLabel ? { label: ccmLabel } : {}),
     // Clear lastToolName on stop so dashboard doesn't show stale tool name while waiting
     ...(event === 'stop' ? { lastToolName: null } : {}),
     ...(toolName ? { lastToolName: toolName } : {}),

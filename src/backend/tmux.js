@@ -24,10 +24,13 @@ function ensureSession(sessionName = CCM_SESSION) {
   }
 }
 
-function newWindow({ windowName, cwd, sessionName = CCM_SESSION }) {
+function newWindow({ windowName, cwd, label = '', sessionName = CCM_SESSION }) {
   ensureSession(sessionName);
-  // Use execFileSync to avoid shell interpretation of cwd and windowName
-  execFileSync('tmux', ['new-window', '-t', sessionName, '-n', windowName, '-c', cwd]);
+  // -e sets env vars in the new window so the hook can mark the session as managed
+  execFileSync('tmux', ['new-window', '-t', sessionName, '-n', windowName, '-c', cwd,
+    '-e', `CCM_WINDOW_NAME=${windowName}`,
+    '-e', `CCM_LABEL=${label}`,
+  ]);
   execFileSync('tmux', ['send-keys', '-t', `${sessionName}:${windowName}`, 'claude', 'Enter']);
 }
 

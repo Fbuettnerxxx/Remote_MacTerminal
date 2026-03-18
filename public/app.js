@@ -159,6 +159,11 @@ async function submitNewSession() {
       errEl.classList.remove('hidden');
     } else {
       hideNewSessionModal();
+      // Show a temporary card while Claude is starting (disappears when real session arrives)
+      const tempId = '_starting_' + Date.now();
+      sessions[tempId] = { sessionId: tempId, label, cwd, state: 'bootstrapping', managed: true, _temp: true };
+      render();
+      setTimeout(() => { if (sessions[tempId]) { delete sessions[tempId]; render(); } }, 30000);
     }
   } catch (e) {
     errEl.textContent = 'Network error';

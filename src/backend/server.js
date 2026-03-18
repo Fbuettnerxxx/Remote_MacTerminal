@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const fs = require('fs');
-const crypto = require('crypto');
 const WebSocket = require('ws');
 const path = require('path');
 const { SessionStore } = require('./sessions.js');
@@ -64,17 +63,12 @@ function createServer({ token = null } = {}) {
     } catch (err) {
       return res.status(400).json({ error: 'could not create directory: ' + err.message });
     }
-    const sessionId = crypto.randomBytes(6).toString('hex');
     const windowName = label.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
-    const now = new Date().toISOString();
-    fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-    fs.writeFileSync(path.join(SESSIONS_DIR, `${sessionId}.json`), JSON.stringify(
-      { sessionId, label, cwd, state: 'bootstrapping', managed: true, windowName, createdAt: now, updatedAt: now },
-      null, 2
-    ));
     try {
-      newWindow({ windowName, cwd });
-      res.json({ ok: true, sessionId });
+      // newWindow sets CCM_WINDOW_NAME + CCM_LABEL env vars in the tmux window;
+      // the hook picks these up and marks the real Claude session as managed
+      newWindow({ windowName, cwd, label });
+      res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
